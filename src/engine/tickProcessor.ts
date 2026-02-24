@@ -30,7 +30,7 @@ export function processTick() {
   // 7. Victory check
   checkVictoryConditions();
 
-  // 8. Clean old notifications (keep last 100 ticks)
+  // 8. Clean old notifications (keep last 50 ticks)
   const currentTick = useGameStore.getState().tick;
-  state.clearOldNotifications(currentTick - 200);
+  state.clearOldNotifications(currentTick - 50);
 }

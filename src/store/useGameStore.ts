@@ -16,6 +16,7 @@ import type {
 } from '@/types';
 import type { DiplomacyState, Alliance, TradeOffer, NonAggressionPact, BetrayalRecord } from '@/types/diplomacy';
 import { STARTING_RESOURCES, STARTING_ARMY } from '@/constants/gameConfig';
+import { TECH_TREE } from '@/constants/techTree';
 
 export interface GameStore extends GameState {
   diplomacy: DiplomacyState;
@@ -175,6 +176,10 @@ export const useGameStore = create<GameStore>()(
     }),
     clearOldNotifications: (beforeTick) => set((s) => {
       s.notifications = s.notifications.filter((n) => n.tick >= beforeTick);
+      // Cap at 50 notifications max to prevent memory bloat
+      if (s.notifications.length > 50) {
+        s.notifications = s.notifications.slice(-50);
+      }
     }),
 
     // Victory
@@ -187,10 +192,13 @@ export const useGameStore = create<GameStore>()(
     // Tech
     startResearch: (factionId, techId) => set((s) => {
       const f = s.factions[factionId];
-      if (f) {
-        f.currentResearch = techId;
-        f.researchProgress = 0;
-      }
+      if (!f || f.currentResearch) return;
+      if (f.techResearched.includes(techId)) return;
+      const tech = TECH_TREE.find((t) => t.id === techId);
+      if (!tech) return;
+      if (!tech.prerequisites.every((p) => f.techResearched.includes(p))) return;
+      f.currentResearch = techId;
+      f.researchProgress = 0;
     }),
     completeResearch: (factionId, techId) => set((s) => {
       const f = s.factions[factionId];
@@ -231,8 +239,8 @@ export const useGameStore = create<GameStore>()(
 
     // Init
     initGame: (territories, factions) => set((s) => {
-      s.territories = territories as any;
-      s.factions = factions as any;
+      s.territories = territories;
+      s.factions = factions;
       s.tick = 0;
       s.phase = 'playing';
       s.pendingAttacks = [];
@@ -243,8 +251,8 @@ export const useGameStore = create<GameStore>()(
     resetGame: () => set((s) => {
       s.phase = 'menu';
       s.tick = 0;
-      s.territories = {} as any;
-      s.factions = {} as any;
+      s.territories = {};
+      s.factions = {};
       s.activeFactionId = null;
       s.selectedTerritoryId = null;
       s.pendingAttacks = [];

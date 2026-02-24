@@ -6,6 +6,8 @@ import { UNIT_STATS, MOVEMENT_TICKS } from '@/constants/gameConfig';
 import type { UnitType, Army, TerritoryId } from '@/types';
 import '@/styles/parchment.css';
 
+let playerAttackCounter = 0;
+
 export function TerritoryPanel() {
   const { territory, setSelected } = useSelectedTerritory();
   const factions = useGameStore((s) => s.factions);
@@ -56,8 +58,9 @@ export function TerritoryPanel() {
       siege: territory.army.siege - army.siege,
     });
 
+    playerAttackCounter += 1;
     state.addPendingAttack({
-      id: `attack-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: `attack-player-${playerAttackCounter}`,
       attackerFactionId: activeFactionId,
       fromTerritoryId: territory.id,
       toTerritoryId: targetId,

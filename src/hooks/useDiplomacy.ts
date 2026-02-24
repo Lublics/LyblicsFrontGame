@@ -3,6 +3,8 @@ import { useGameStore } from '@/store/useGameStore';
 import { BETRAYAL_PENALTY_TICKS } from '@/constants/gameConfig';
 import type { FactionId, Resources } from '@/types';
 
+let diplomacyIdCounter = 0;
+
 export function useDiplomacy() {
   const store = useGameStore;
   const diplomacy = useGameStore((s) => s.diplomacy);
@@ -31,8 +33,9 @@ export function useDiplomacy() {
 
   const proposeAlliance = useCallback((from: FactionId, to: FactionId) => {
     const state = store.getState();
+    diplomacyIdCounter += 1;
     state.addAlliance({
-      id: `alliance-${Date.now()}`,
+      id: `alliance-${diplomacyIdCounter}`,
       factionA: from,
       factionB: to,
       formedAtTick: state.tick,
@@ -66,8 +69,9 @@ export function useDiplomacy() {
 
   const proposePact = useCallback((from: FactionId, to: FactionId, duration: number = 120) => {
     const state = store.getState();
+    diplomacyIdCounter += 1;
     state.addPact({
-      id: `pact-${Date.now()}`,
+      id: `pact-${diplomacyIdCounter}`,
       factionA: from,
       factionB: to,
       formedAtTick: state.tick,
@@ -82,8 +86,9 @@ export function useDiplomacy() {
 
   const proposeTrade = useCallback((from: FactionId, to: FactionId, offering: Partial<Resources>, requesting: Partial<Resources>) => {
     const state = store.getState();
+    diplomacyIdCounter += 1;
     state.addTradeOffer({
-      id: `trade-${Date.now()}`,
+      id: `trade-${diplomacyIdCounter}`,
       from,
       to,
       offering,

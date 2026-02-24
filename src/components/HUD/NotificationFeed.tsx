@@ -26,11 +26,11 @@ export function NotificationFeed() {
   return (
     <div style={{
       position: 'absolute',
-      top: 60,
-      right: 12,
-      width: 280,
+      bottom: 16,
+      left: 16,
+      width: 300,
       display: 'flex',
-      flexDirection: 'column',
+      flexDirection: 'column-reverse',
       gap: 4,
       zIndex: 20,
       pointerEvents: 'none',
@@ -41,14 +41,14 @@ export function NotificationFeed() {
           className="animate-notif"
           style={{
             padding: '6px 10px',
-            background: 'rgba(244, 228, 193, 0.92)',
+            background: 'rgba(244, 228, 193, 0.95)',
             border: `1px solid ${TYPE_COLORS[n.type] ?? '#8b7355'}`,
             borderLeft: `3px solid ${TYPE_COLORS[n.type] ?? '#8b7355'}`,
             borderRadius: 3,
             fontSize: '0.75rem',
             fontFamily: "'MedievalSharp', serif",
             color: '#2a1f14',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           }}
         >
           <span>{TYPE_ICONS[n.type] ?? ''} {n.message}</span>

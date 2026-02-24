@@ -2,6 +2,8 @@ import { useGameStore } from '@/store/useGameStore';
 import { UNIT_STATS, MOVEMENT_TICKS } from '@/constants/gameConfig';
 import type { Army, FactionId, TerritoryId, UnitType } from '@/types';
 
+let attackIdCounter = 0;
+
 export function getArmyStrengthScore(army: Army): number {
   return (
     army.militia * UNIT_STATS.militia.attack +
@@ -93,8 +95,9 @@ export function launchAttack(factionId: FactionId, fromId: TerritoryId, toId: Te
     siege: territory.army.siege - army.siege,
   });
 
+  attackIdCounter += 1;
   state.addPendingAttack({
-    id: `attack-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `attack-ai-${attackIdCounter}`,
     attackerFactionId: factionId,
     fromTerritoryId: fromId,
     toTerritoryId: toId,

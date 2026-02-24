@@ -13,7 +13,24 @@ export function TrainPanel() {
   const faction = useGameStore((s) => activeFactionId ? s.factions[activeFactionId] : null);
 
   if (!territory || !faction || territory.owner !== activeFactionId) {
-    return null;
+    return (
+      <div className="parchment-panel" style={{
+        width: 280,
+        padding: 16,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#6b5840',
+        fontStyle: 'italic',
+        fontSize: '0.8rem',
+      }}>
+        {!territory
+          ? 'Sélectionnez un territoire pour recruter'
+          : territory.owner !== activeFactionId
+            ? 'Vous ne contrôlez pas ce territoire'
+            : 'Aucune faction active'}
+      </div>
+    );
   }
 
   const handleTrain = (unitType: UnitType) => {

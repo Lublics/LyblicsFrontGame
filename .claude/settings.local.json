@@ -17,7 +17,11 @@
       "Bash(grep:*)",
       "Bash(node:*)",
       "Bash(cd /c/Users/renau/Documents/GitHub/LyblicsFrontGame && npx vite build 2>&1)",
-      "Bash(true:*)"
+      "Bash(true:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(cd \"C:\\\\Users\\\\utilisateur\\\\Documents\\\\GitHub\\\\LyblicsFrontGame\" && npx tsc --noEmit 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\utilisateur\\\\Documents\\\\GitHub\\\\LyblicsFrontGame\" && npx vite build 2>&1)"
     ]
   }
 }
