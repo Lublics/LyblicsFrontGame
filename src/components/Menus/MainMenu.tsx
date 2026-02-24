@@ -91,7 +91,7 @@ export function MainMenu() {
         fontFamily: "'MedievalSharp', serif",
         textAlign: 'center',
       }}>
-        Un jeu de stratégie médiévale en temps réel
+        Un jeu de stratégie médiévale au tour par tour
         <br />
         <span style={{ fontSize: '0.6rem' }}>v0.1.0</span>
       </div>

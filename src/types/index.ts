@@ -83,7 +83,6 @@ export interface GameState {
   winner: FactionId | null;
   actionPoints: number;
   maxActionPoints: number;
-  currentTurnFactionId: FactionId | null;
 }
 
 export interface Notification {

@@ -107,21 +107,55 @@ export function useDiplomacy() {
     const toFaction = state.factions[trade.to];
     if (!fromFaction || !toFaction) return;
 
-    if (trade.offering.gold) state.updateFactionResources(trade.from, { gold: -(trade.offering.gold) });
-    if (trade.offering.food) state.updateFactionResources(trade.from, { food: -(trade.offering.food) });
-    if (trade.offering.wood) state.updateFactionResources(trade.from, { wood: -(trade.offering.wood) });
+    // Validate that both factions have sufficient resources
+    const offeringGold = trade.offering.gold ?? 0;
+    const offeringFood = trade.offering.food ?? 0;
+    const offeringWood = trade.offering.wood ?? 0;
+    const requestingGold = trade.requesting.gold ?? 0;
+    const requestingFood = trade.requesting.food ?? 0;
+    const requestingWood = trade.requesting.wood ?? 0;
 
-    if (trade.requesting.gold) state.updateFactionResources(trade.to, { gold: -(trade.requesting.gold) });
-    if (trade.requesting.food) state.updateFactionResources(trade.to, { food: -(trade.requesting.food) });
-    if (trade.requesting.wood) state.updateFactionResources(trade.to, { wood: -(trade.requesting.wood) });
+    if (fromFaction.resources.gold < offeringGold ||
+        fromFaction.resources.food < offeringFood ||
+        fromFaction.resources.wood < offeringWood) {
+      state.addNotification({
+        message: `${fromFaction.name} n'a pas assez de ressources pour cet échange!`,
+        type: 'diplomacy',
+        turn: state.turnNumber,
+      });
+      state.updateTradeOffer(tradeId, 'rejected');
+      return;
+    }
 
-    if (trade.offering.gold) state.updateFactionResources(trade.to, { gold: trade.offering.gold });
-    if (trade.offering.food) state.updateFactionResources(trade.to, { food: trade.offering.food });
-    if (trade.offering.wood) state.updateFactionResources(trade.to, { wood: trade.offering.wood });
+    if (toFaction.resources.gold < requestingGold ||
+        toFaction.resources.food < requestingFood ||
+        toFaction.resources.wood < requestingWood) {
+      state.addNotification({
+        message: `${toFaction.name} n'a pas assez de ressources pour cet échange!`,
+        type: 'diplomacy',
+        turn: state.turnNumber,
+      });
+      state.updateTradeOffer(tradeId, 'rejected');
+      return;
+    }
 
-    if (trade.requesting.gold) state.updateFactionResources(trade.from, { gold: trade.requesting.gold });
-    if (trade.requesting.food) state.updateFactionResources(trade.from, { food: trade.requesting.food });
-    if (trade.requesting.wood) state.updateFactionResources(trade.from, { wood: trade.requesting.wood });
+    // Deduct from sender, add to receiver
+    if (offeringGold) state.updateFactionResources(trade.from, { gold: -offeringGold });
+    if (offeringFood) state.updateFactionResources(trade.from, { food: -offeringFood });
+    if (offeringWood) state.updateFactionResources(trade.from, { wood: -offeringWood });
+
+    if (offeringGold) state.updateFactionResources(trade.to, { gold: offeringGold });
+    if (offeringFood) state.updateFactionResources(trade.to, { food: offeringFood });
+    if (offeringWood) state.updateFactionResources(trade.to, { wood: offeringWood });
+
+    // Deduct from receiver, add to sender
+    if (requestingGold) state.updateFactionResources(trade.to, { gold: -requestingGold });
+    if (requestingFood) state.updateFactionResources(trade.to, { food: -requestingFood });
+    if (requestingWood) state.updateFactionResources(trade.to, { wood: -requestingWood });
+
+    if (requestingGold) state.updateFactionResources(trade.from, { gold: requestingGold });
+    if (requestingFood) state.updateFactionResources(trade.from, { food: requestingFood });
+    if (requestingWood) state.updateFactionResources(trade.from, { wood: requestingWood });
 
     state.updateTradeOffer(tradeId, 'accepted');
     state.addNotification({

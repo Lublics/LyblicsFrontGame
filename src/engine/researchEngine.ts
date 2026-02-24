@@ -9,8 +9,8 @@ export function processResearch() {
       const tech = TECH_TREE.find((t) => t.id === faction.currentResearch);
       if (!tech) return;
 
-      // Research speed based on gold (per round)
-      const researchSpeed = Math.max(5, faction.resources.gold / 20);
+      // Research speed based on gold (per round) — capped to avoid instant completion
+      const researchSpeed = Math.min(50, Math.max(15, faction.resources.gold / 6));
       faction.researchProgress += researchSpeed;
 
       if (faction.researchProgress >= tech.cost) {

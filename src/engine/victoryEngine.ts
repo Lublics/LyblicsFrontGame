@@ -8,6 +8,12 @@ export function checkVictoryConditions() {
   const totalTerritories = Object.keys(state.territories).length;
   const aliveFactions = Object.values(state.factions).filter((f) => f.alive);
 
+  // No factions alive — stalemate, end the game
+  if (aliveFactions.length === 0) {
+    state.setPhase('victory');
+    return;
+  }
+
   // Elimination: last faction standing
   if (aliveFactions.length === 1) {
     state.setWinner(aliveFactions[0].id, 'elimination');

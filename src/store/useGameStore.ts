@@ -95,7 +95,6 @@ export const useGameStore = create<GameStore>()(
     winner: null,
     actionPoints: MAX_ACTION_POINTS,
     maxActionPoints: MAX_ACTION_POINTS,
-    currentTurnFactionId: null,
     diplomacy: { ...initialDiplomacy },
 
     // Game phase
@@ -105,7 +104,6 @@ export const useGameStore = create<GameStore>()(
     incrementTurn: () => set((s) => { s.turnNumber += 1; }),
     startPlayerTurn: () => set((s) => {
       s.phase = 'player_turn';
-      s.currentTurnFactionId = s.activeFactionId;
       s.actionPoints = s.maxActionPoints;
     }),
 
@@ -124,7 +122,6 @@ export const useGameStore = create<GameStore>()(
     // Faction
     setActiveFaction: (id) => set((s) => {
       s.activeFactionId = id;
-      s.currentTurnFactionId = id;
     }),
     updateFactionResources: (id, delta) => set((s) => {
       const f = s.factions[id];
@@ -248,7 +245,6 @@ export const useGameStore = create<GameStore>()(
       s.winner = null;
       s.actionPoints = MAX_ACTION_POINTS;
       s.maxActionPoints = MAX_ACTION_POINTS;
-      s.currentTurnFactionId = null;
       s.diplomacy = { alliances: [], tradeOffers: [], pacts: [], betrayals: [], relations: {} };
     }),
     resetGame: () => set((s) => {
@@ -262,7 +258,6 @@ export const useGameStore = create<GameStore>()(
       s.winner = null;
       s.actionPoints = MAX_ACTION_POINTS;
       s.maxActionPoints = MAX_ACTION_POINTS;
-      s.currentTurnFactionId = null;
       s.diplomacy = { alliances: [], tradeOffers: [], pacts: [], betrayals: [], relations: {} };
     }),
   }))
