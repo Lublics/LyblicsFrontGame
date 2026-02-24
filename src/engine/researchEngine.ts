@@ -9,11 +9,10 @@ export function processResearch() {
       const tech = TECH_TREE.find((t) => t.id === faction.currentResearch);
       if (!tech) return;
 
-      // Research speed based on gold (1 point per 100 gold per tick, min 0.5)
-      const researchSpeed = Math.max(0.5, faction.resources.gold / 100);
+      // Research speed based on gold (per round)
+      const researchSpeed = Math.max(5, faction.resources.gold / 20);
       faction.researchProgress += researchSpeed;
 
-      // Check if research complete
       if (faction.researchProgress >= tech.cost) {
         faction.techResearched.push(tech.id);
         faction.currentResearch = null;
@@ -23,7 +22,7 @@ export function processResearch() {
           id: `notif-research-${faction.id}-${tech.id}`,
           message: `${faction.name} a recherché ${tech.name}!`,
           type: 'research',
-          tick: s.tick,
+          turn: s.turnNumber,
           factionId: faction.id,
         });
       }

@@ -8,14 +8,13 @@ import type {
   Territory,
   Faction,
   Army,
-  PendingAttack,
   Notification,
   VictoryCondition,
   UnitType,
   TrainingQueueItem,
 } from '@/types';
 import type { DiplomacyState, Alliance, TradeOffer, NonAggressionPact, BetrayalRecord } from '@/types/diplomacy';
-import { STARTING_RESOURCES, STARTING_ARMY } from '@/constants/gameConfig';
+import { STARTING_RESOURCES, STARTING_ARMY, MAX_ACTION_POINTS, BETRAYAL_PENALTY_TURNS } from '@/constants/gameConfig';
 import { TECH_TREE } from '@/constants/techTree';
 
 export interface GameStore extends GameState {
@@ -23,7 +22,10 @@ export interface GameStore extends GameState {
 
   // Game phase
   setPhase: (phase: GamePhase) => void;
-  incrementTick: () => void;
+
+  // Turn management
+  incrementTurn: () => void;
+  startPlayerTurn: () => void;
 
   // Territory
   setSelectedTerritory: (id: TerritoryId | null) => void;
@@ -39,16 +41,12 @@ export interface GameStore extends GameState {
   eliminateFaction: (id: FactionId) => void;
 
   // Training
-  enqueueTraining: (factionId: FactionId, territoryId: TerritoryId, unitType: UnitType, ticks: number) => void;
-  tickTrainingQueues: () => void;
-
-  // Combat
-  addPendingAttack: (attack: PendingAttack) => void;
-  removePendingAttack: (id: string) => void;
+  enqueueTraining: (factionId: FactionId, territoryId: TerritoryId, unitType: UnitType, turns: number) => void;
+  advanceTrainingQueues: () => void;
 
   // Notifications
   addNotification: (notification: Omit<Notification, 'id'>) => void;
-  clearOldNotifications: (beforeTick: number) => void;
+  clearOldNotifications: (beforeTurn: number) => void;
 
   // Victory
   setWinner: (factionId: FactionId, condition: VictoryCondition) => void;
@@ -87,21 +85,29 @@ export const useGameStore = create<GameStore>()(
   immer((set) => ({
     // Initial state
     phase: 'menu' as GamePhase,
-    tick: 0,
-    tickRate: 500,
+    turnNumber: 1,
     territories: {},
     factions: {},
     activeFactionId: null,
     selectedTerritoryId: null,
-    pendingAttacks: [],
     notifications: [],
     victoryCondition: 'domination' as VictoryCondition,
     winner: null,
+    actionPoints: MAX_ACTION_POINTS,
+    maxActionPoints: MAX_ACTION_POINTS,
+    currentTurnFactionId: null,
     diplomacy: { ...initialDiplomacy },
 
     // Game phase
     setPhase: (phase) => set((s) => { s.phase = phase; }),
-    incrementTick: () => set((s) => { s.tick += 1; }),
+
+    // Turn management
+    incrementTurn: () => set((s) => { s.turnNumber += 1; }),
+    startPlayerTurn: () => set((s) => {
+      s.phase = 'player_turn';
+      s.currentTurnFactionId = s.activeFactionId;
+      s.actionPoints = s.maxActionPoints;
+    }),
 
     // Territory
     setSelectedTerritory: (id) => set((s) => { s.selectedTerritoryId = id; }),
@@ -116,7 +122,10 @@ export const useGameStore = create<GameStore>()(
     }),
 
     // Faction
-    setActiveFaction: (id) => set((s) => { s.activeFactionId = id; }),
+    setActiveFaction: (id) => set((s) => {
+      s.activeFactionId = id;
+      s.currentTurnFactionId = id;
+    }),
     updateFactionResources: (id, delta) => set((s) => {
       const f = s.factions[id];
       if (!f) return;
@@ -137,18 +146,18 @@ export const useGameStore = create<GameStore>()(
     }),
 
     // Training
-    enqueueTraining: (factionId, territoryId, unitType, ticks) => set((s) => {
+    enqueueTraining: (factionId, territoryId, unitType, turns) => set((s) => {
       const f = s.factions[factionId];
       if (f) {
-        f.trainingQueue.push({ unitType, ticksRemaining: ticks, territoryId });
+        f.trainingQueue.push({ unitType, turnsRemaining: turns, territoryId });
       }
     }),
-    tickTrainingQueues: () => set((s) => {
+    advanceTrainingQueues: () => set((s) => {
       Object.values(s.factions).forEach((faction) => {
         const completed: number[] = [];
         faction.trainingQueue.forEach((item, idx) => {
-          item.ticksRemaining -= 1;
-          if (item.ticksRemaining <= 0) {
+          item.turnsRemaining -= 1;
+          if (item.turnsRemaining <= 0) {
             completed.push(idx);
             const territory = s.territories[item.territoryId];
             if (territory && territory.owner === faction.id) {
@@ -156,17 +165,10 @@ export const useGameStore = create<GameStore>()(
             }
           }
         });
-        // Remove completed in reverse order
         for (let i = completed.length - 1; i >= 0; i--) {
           faction.trainingQueue.splice(completed[i], 1);
         }
       });
-    }),
-
-    // Combat
-    addPendingAttack: (attack) => set((s) => { s.pendingAttacks.push(attack); }),
-    removePendingAttack: (id) => set((s) => {
-      s.pendingAttacks = s.pendingAttacks.filter((a) => a.id !== id);
     }),
 
     // Notifications
@@ -174,9 +176,8 @@ export const useGameStore = create<GameStore>()(
       notifCounter += 1;
       s.notifications.push({ ...notification, id: `notif-${notifCounter}` });
     }),
-    clearOldNotifications: (beforeTick) => set((s) => {
-      s.notifications = s.notifications.filter((n) => n.tick >= beforeTick);
-      // Cap at 50 notifications max to prevent memory bloat
+    clearOldNotifications: (beforeTurn) => set((s) => {
+      s.notifications = s.notifications.filter((n) => n.turn >= beforeTurn);
       if (s.notifications.length > 50) {
         s.notifications = s.notifications.slice(-50);
       }
@@ -230,7 +231,7 @@ export const useGameStore = create<GameStore>()(
     recordBetrayal: (record) => set((s) => {
       s.diplomacy.betrayals.push(record);
       const f = s.factions[record.betrayer];
-      if (f) f.diplomaticPenalty = 60;
+      if (f) f.diplomaticPenalty = BETRAYAL_PENALTY_TURNS;
     }),
     setRelation: (factionA, factionB, value) => set((s) => {
       const key = [factionA, factionB].sort().join('-');
@@ -241,23 +242,27 @@ export const useGameStore = create<GameStore>()(
     initGame: (territories, factions) => set((s) => {
       s.territories = territories;
       s.factions = factions;
-      s.tick = 0;
-      s.phase = 'playing';
-      s.pendingAttacks = [];
+      s.turnNumber = 1;
+      s.phase = 'player_turn';
       s.notifications = [];
       s.winner = null;
+      s.actionPoints = MAX_ACTION_POINTS;
+      s.maxActionPoints = MAX_ACTION_POINTS;
+      s.currentTurnFactionId = null;
       s.diplomacy = { alliances: [], tradeOffers: [], pacts: [], betrayals: [], relations: {} };
     }),
     resetGame: () => set((s) => {
       s.phase = 'menu';
-      s.tick = 0;
+      s.turnNumber = 1;
       s.territories = {};
       s.factions = {};
       s.activeFactionId = null;
       s.selectedTerritoryId = null;
-      s.pendingAttacks = [];
       s.notifications = [];
       s.winner = null;
+      s.actionPoints = MAX_ACTION_POINTS;
+      s.maxActionPoints = MAX_ACTION_POINTS;
+      s.currentTurnFactionId = null;
       s.diplomacy = { alliances: [], tradeOffers: [], pacts: [], betrayals: [], relations: {} };
     }),
   }))

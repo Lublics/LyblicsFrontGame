@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/useGameStore';
 import { useDiplomacy } from '@/hooks/useDiplomacy';
+import { AP_COST } from '@/constants/gameConfig';
+import { spendAP } from '@/engine/actionPoints';
 import type { FactionId } from '@/types';
 import '@/styles/parchment.css';
 
@@ -8,12 +10,21 @@ export function DiplomacyPanel() {
   const activeFactionId = useGameStore((s) => s.activeFactionId);
   const factions = useGameStore((s) => s.factions);
   const faction = activeFactionId ? factions[activeFactionId] : null;
+  const actionPoints = useGameStore((s) => s.actionPoints);
+  const phase = useGameStore((s) => s.phase);
   const { diplomacy, getStatus, getRelation, proposeAlliance, breakAlliance, proposePact } = useDiplomacy();
-  const [selectedFaction, setSelectedFaction] = useState<FactionId | null>(null);
+
+  const isPlayerTurn = phase === 'player_turn';
 
   if (!faction || !activeFactionId) return null;
 
   const otherFactions = Object.values(factions).filter((f) => f.alive && f.id !== activeFactionId);
+
+  const handleDiplomacyAction = (action: () => void) => {
+    if (!isPlayerTurn) return;
+    if (!spendAP(AP_COST.diplomacy)) return;
+    action();
+  };
 
   return (
     <div className="parchment-panel" style={{ width: 280, padding: 12, overflowY: 'auto' }}>
@@ -31,7 +42,7 @@ export function DiplomacyPanel() {
           color: '#8b2500',
           marginBottom: 8,
         }}>
-          ⚠ Pénalité de trahison: {faction.diplomaticPenalty} ticks restants
+          ⚠ Pénalité de trahison: {faction.diplomaticPenalty} tours restants
         </div>
       )}
 
@@ -82,16 +93,18 @@ export function DiplomacyPanel() {
                     <button
                       className="parchment-btn"
                       style={{ padding: '2px 6px', fontSize: '0.6rem', flex: 1 }}
-                      onClick={() => proposeAlliance(activeFactionId, other.id)}
+                      disabled={!isPlayerTurn || actionPoints < AP_COST.diplomacy}
+                      onClick={() => handleDiplomacyAction(() => proposeAlliance(activeFactionId, other.id))}
                     >
-                      Alliance
+                      Alliance ({AP_COST.diplomacy})
                     </button>
                     <button
                       className="parchment-btn"
                       style={{ padding: '2px 6px', fontSize: '0.6rem', flex: 1 }}
-                      onClick={() => proposePact(activeFactionId, other.id)}
+                      disabled={!isPlayerTurn || actionPoints < AP_COST.diplomacy}
+                      onClick={() => handleDiplomacyAction(() => proposePact(activeFactionId, other.id))}
                     >
-                      Pacte
+                      Pacte ({AP_COST.diplomacy})
                     </button>
                   </>
                 )}
@@ -99,15 +112,16 @@ export function DiplomacyPanel() {
                   <button
                     className="parchment-btn parchment-btn-danger"
                     style={{ padding: '2px 6px', fontSize: '0.6rem', flex: 1 }}
-                    onClick={() => {
+                    disabled={!isPlayerTurn || actionPoints < AP_COST.diplomacy}
+                    onClick={() => handleDiplomacyAction(() => {
                       const alliance = diplomacy.alliances.find(
                         (a) => (a.factionA === activeFactionId && a.factionB === other.id) ||
                                (a.factionA === other.id && a.factionB === activeFactionId)
                       );
                       if (alliance) breakAlliance(alliance.id, activeFactionId);
-                    }}
+                    })}
                   >
-                    Trahir l'alliance
+                    Trahir ({AP_COST.diplomacy})
                   </button>
                 )}
               </div>

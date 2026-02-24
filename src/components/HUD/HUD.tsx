@@ -1,7 +1,7 @@
 import { ResourceBar } from './ResourceBar';
 import { TurnTimer } from './TurnTimer';
 
-export function HUD() {
+export function HUD({ onMenuToggle }: { onMenuToggle: () => void }) {
   return (
     <div style={{
       display: 'flex',
@@ -12,7 +12,16 @@ export function HUD() {
       zIndex: 10,
     }}>
       <ResourceBar />
-      <TurnTimer />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <TurnTimer />
+        <button
+          className="parchment-btn"
+          style={{ padding: '4px 10px', fontSize: '0.65rem', marginRight: 8 }}
+          onClick={onMenuToggle}
+        >
+          Menu
+        </button>
+      </div>
     </div>
   );
 }

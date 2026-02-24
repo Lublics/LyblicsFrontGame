@@ -24,7 +24,7 @@ export interface Army {
 
 export interface TrainingQueueItem {
   unitType: UnitType;
-  ticksRemaining: number;
+  turnsRemaining: number;
   territoryId: TerritoryId;
 }
 
@@ -66,39 +66,31 @@ export interface Faction {
   trainingQueue: TrainingQueueItem[];
   alive: boolean;
   aiStrategy: 'aggressive' | 'defensive' | 'expansionist' | null;
-  diplomaticPenalty: number; // betrayal penalty ticks remaining
+  diplomaticPenalty: number;
 }
 
-export type GamePhase = 'menu' | 'setup' | 'playing' | 'paused' | 'victory';
+export type GamePhase = 'menu' | 'setup' | 'player_turn' | 'ai_turn' | 'victory';
 
 export interface GameState {
   phase: GamePhase;
-  tick: number;
-  tickRate: number;
+  turnNumber: number;
   territories: Record<TerritoryId, Territory>;
   factions: Record<FactionId, Faction>;
   activeFactionId: FactionId | null;
   selectedTerritoryId: TerritoryId | null;
-  pendingAttacks: PendingAttack[];
   notifications: Notification[];
   victoryCondition: VictoryCondition;
   winner: FactionId | null;
-}
-
-export interface PendingAttack {
-  id: string;
-  attackerFactionId: FactionId;
-  fromTerritoryId: TerritoryId;
-  toTerritoryId: TerritoryId;
-  army: Army;
-  ticksRemaining: number;
+  actionPoints: number;
+  maxActionPoints: number;
+  currentTurnFactionId: FactionId | null;
 }
 
 export interface Notification {
   id: string;
   message: string;
   type: 'combat' | 'diplomacy' | 'research' | 'resource' | 'victory';
-  tick: number;
+  turn: number;
   factionId?: FactionId;
 }
 

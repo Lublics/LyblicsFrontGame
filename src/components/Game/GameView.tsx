@@ -1,19 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { GameMap } from '@/components/Map/GameMap';
 import { HUD } from '@/components/HUD/HUD';
 import { NotificationFeed } from '@/components/HUD/NotificationFeed';
 import { MiniMap } from '@/components/HUD/MiniMap';
 import { FactionPanel } from '@/components/HUD/FactionPanel';
+import { AITurnOverlay } from '@/components/HUD/AITurnOverlay';
 import { TerritoryPanel } from '@/components/Panels/TerritoryPanel';
 import { TrainPanel } from '@/components/Panels/TrainPanel';
 import { TechPanel } from '@/components/Panels/TechPanel';
 import { DiplomacyPanel } from '@/components/Panels/DiplomacyPanel';
+import { PauseMenu } from '@/components/Menus/PauseMenu';
+import { useGameStore } from '@/store/useGameStore';
+import { endPlayerTurn } from '@/engine/tickProcessor';
 import '@/styles/parchment.css';
 
 type SideTab = 'territory' | 'train' | 'tech' | 'diplomacy';
 
 export function GameView() {
   const [activeTab, setActiveTab] = useState<SideTab>('territory');
+  const [showMenu, setShowMenu] = useState(false);
+  const actionPoints = useGameStore((s) => s.actionPoints);
+  const phase = useGameStore((s) => s.phase);
+
+  // Auto-end turn when AP reaches 0
+  useEffect(() => {
+    if (phase === 'player_turn' && actionPoints <= 0) {
+      const timer = setTimeout(() => endPlayerTurn(), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [actionPoints, phase]);
 
   const tabs: { id: SideTab; label: string; icon: string }[] = [
     { id: 'territory', label: 'Territoire', icon: '🏰' },
@@ -31,7 +46,7 @@ export function GameView() {
       overflow: 'hidden',
     }}>
       {/* Top HUD */}
-      <HUD />
+      <HUD onMenuToggle={() => setShowMenu(true)} />
 
       {/* Main area */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
@@ -42,6 +57,12 @@ export function GameView() {
         <NotificationFeed />
         <MiniMap />
         <FactionPanel />
+
+        {/* AI Turn overlay */}
+        {phase === 'ai_turn' && <AITurnOverlay />}
+
+        {/* Menu overlay */}
+        {showMenu && <PauseMenu onClose={() => setShowMenu(false)} />}
 
         {/* Right panel */}
         <div style={{

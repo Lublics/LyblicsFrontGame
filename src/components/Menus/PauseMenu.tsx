@@ -2,8 +2,7 @@ import { useGameStore } from '@/store/useGameStore';
 import '@/styles/parchment.css';
 import '@/styles/animations.css';
 
-export function PauseMenu() {
-  const setPhase = useGameStore((s) => s.setPhase);
+export function PauseMenu({ onClose }: { onClose: () => void }) {
   const resetGame = useGameStore((s) => s.resetGame);
 
   return (
@@ -24,13 +23,13 @@ export function PauseMenu() {
         gap: 16,
       }}>
         <h2 className="parchment-title" style={{ fontSize: '1.8rem' }}>
-          Pause
+          Menu
         </h2>
         <div style={{ width: 150, height: 1, background: 'linear-gradient(90deg, transparent, #8b7355, transparent)', margin: '0 auto' }} />
         <button
           className="parchment-btn parchment-btn-primary"
           style={{ padding: '10px 32px' }}
-          onClick={() => setPhase('playing')}
+          onClick={onClose}
         >
           Reprendre
         </button>

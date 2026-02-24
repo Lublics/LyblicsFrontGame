@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useGameStore } from '@/store/useGameStore';
 import { TECH_TREE } from '@/constants/techTree';
+import { AP_COST } from '@/constants/gameConfig';
+import { spendAP } from '@/engine/actionPoints';
 import type { TechNode } from '@/types/tech';
 import '@/styles/parchment.css';
 
@@ -19,8 +21,11 @@ const CATEGORY_LABELS = {
 export function TechPanel() {
   const activeFactionId = useGameStore((s) => s.activeFactionId);
   const faction = useGameStore((s) => activeFactionId ? s.factions[activeFactionId] : null);
-  const [selectedTech, setSelectedTech] = useState<TechNode | null>(null);
+  const actionPoints = useGameStore((s) => s.actionPoints);
+  const phase = useGameStore((s) => s.phase);
   const [activeCategory, setActiveCategory] = useState<'military' | 'economy' | 'diplomacy'>('military');
+
+  const isPlayerTurn = phase === 'player_turn';
 
   if (!faction) return null;
 
@@ -34,7 +39,8 @@ export function TechPanel() {
   };
 
   const handleStartResearch = (tech: TechNode) => {
-    if (!activeFactionId || !canResearch(tech)) return;
+    if (!activeFactionId || !isPlayerTurn || !canResearch(tech)) return;
+    if (!spendAP(AP_COST.research)) return;
     useGameStore.getState().startResearch(activeFactionId, tech.id);
   };
 
@@ -93,6 +99,7 @@ export function TechPanel() {
           const isResearched = researched.has(tech.id);
           const canStart = canResearch(tech);
           const prereqMet = tech.prerequisites.every((p) => researched.has(p));
+          const canClick = canStart && isPlayerTurn && actionPoints >= AP_COST.research;
 
           return (
             <div
@@ -103,9 +110,9 @@ export function TechPanel() {
                 border: `1px solid ${isResearched ? '#2e5e1a' : prereqMet ? CATEGORY_COLORS[activeCategory] : 'rgba(139,115,85,0.3)'}`,
                 borderRadius: 3,
                 opacity: prereqMet || isResearched ? 1 : 0.5,
-                cursor: canStart ? 'pointer' : 'default',
+                cursor: canClick ? 'pointer' : 'default',
               }}
-              onClick={() => canStart && handleStartResearch(tech)}
+              onClick={() => canClick && handleStartResearch(tech)}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 600 }}>
@@ -119,8 +126,13 @@ export function TechPanel() {
                 {tech.description}
               </div>
               {!isResearched && canStart && (
-                <div style={{ fontSize: '0.6rem', color: CATEGORY_COLORS[activeCategory], marginTop: 2, fontWeight: 600 }}>
-                  ► Cliquer pour rechercher
+                <div style={{
+                  fontSize: '0.6rem',
+                  color: canClick ? CATEGORY_COLORS[activeCategory] : '#999',
+                  marginTop: 2,
+                  fontWeight: 600,
+                }}>
+                  ► Cliquer pour rechercher ({AP_COST.research} PA)
                 </div>
               )}
             </div>

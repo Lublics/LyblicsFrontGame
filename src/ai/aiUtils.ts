@@ -1,8 +1,7 @@
 import { useGameStore } from '@/store/useGameStore';
-import { UNIT_STATS, MOVEMENT_TICKS } from '@/constants/gameConfig';
+import { UNIT_STATS } from '@/constants/gameConfig';
+import { resolveInstantAttack } from '@/engine/movement';
 import type { Army, FactionId, TerritoryId, UnitType } from '@/types';
-
-let attackIdCounter = 0;
 
 export function getArmyStrengthScore(army: Army): number {
   return (
@@ -72,37 +71,19 @@ export function getNeutralAdjacentTerritory(factionId: FactionId): {
 }
 
 export function launchAttack(factionId: FactionId, fromId: TerritoryId, toId: TerritoryId, ratio: number = 0.6) {
+  const result = resolveInstantAttack(factionId, fromId, toId, ratio);
+
   const state = useGameStore.getState();
-  const territory = state.territories[fromId];
-  if (!territory) return;
+  const toTerritory = state.territories[toId];
+  const faction = state.factions[factionId];
 
-  // Send a portion of the army
-  const sendRatio = Math.min(ratio, 0.8);
-  const army: Army = {
-    militia: Math.floor(territory.army.militia * sendRatio),
-    archer: Math.floor(territory.army.archer * sendRatio),
-    knight: Math.floor(territory.army.knight * sendRatio),
-    siege: Math.floor(territory.army.siege * sendRatio),
-  };
-
-  if (getTotalUnits(army) < 1) return;
-
-  // Remove troops from origin
-  state.setTerritoryArmy(fromId, {
-    militia: territory.army.militia - army.militia,
-    archer: territory.army.archer - army.archer,
-    knight: territory.army.knight - army.knight,
-    siege: territory.army.siege - army.siege,
-  });
-
-  attackIdCounter += 1;
-  state.addPendingAttack({
-    id: `attack-ai-${attackIdCounter}`,
-    attackerFactionId: factionId,
-    fromTerritoryId: fromId,
-    toTerritoryId: toId,
-    army,
-    ticksRemaining: MOVEMENT_TICKS,
+  state.addNotification({
+    message: result.success
+      ? `${faction?.name ?? 'IA'} a conquis ${toTerritory?.name ?? toId}!`
+      : `L'attaque de ${faction?.name ?? 'IA'} sur ${toTerritory?.name ?? toId} a échoué.`,
+    type: 'combat',
+    turn: state.turnNumber,
+    factionId,
   });
 }
 
@@ -119,7 +100,6 @@ export function tryTrainUnit(factionId: FactionId, territoryId: TerritoryId, uni
     faction.resources.food >= cost.food &&
     faction.resources.wood >= cost.wood
   ) {
-    // Check tech requirement
     if ('requires' in stats && stats.requires) {
       if (!faction.techResearched.includes(stats.requires as string)) return false;
     }
@@ -129,7 +109,7 @@ export function tryTrainUnit(factionId: FactionId, territoryId: TerritoryId, uni
       food: -cost.food,
       wood: -cost.wood,
     });
-    state.enqueueTraining(factionId, territoryId, unitType, stats.trainTicks);
+    state.enqueueTraining(factionId, territoryId, unitType, stats.trainTurns);
     return true;
   }
   return false;

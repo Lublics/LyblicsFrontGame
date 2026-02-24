@@ -1,7 +1,8 @@
 import { useGameStore } from '@/store/useGameStore';
 import { useSelectedTerritory } from '@/hooks/useSelectedTerritory';
-import { UNIT_STATS } from '@/constants/gameConfig';
-import { unitTypeName, unitTypeIcon, formatNumber } from '@/utils/formatters';
+import { UNIT_STATS, AP_COST } from '@/constants/gameConfig';
+import { spendAP } from '@/engine/actionPoints';
+import { unitTypeName, unitTypeIcon } from '@/utils/formatters';
 import type { UnitType } from '@/types';
 import '@/styles/parchment.css';
 
@@ -11,6 +12,10 @@ export function TrainPanel() {
   const { territory } = useSelectedTerritory();
   const activeFactionId = useGameStore((s) => s.activeFactionId);
   const faction = useGameStore((s) => activeFactionId ? s.factions[activeFactionId] : null);
+  const actionPoints = useGameStore((s) => s.actionPoints);
+  const phase = useGameStore((s) => s.phase);
+
+  const isPlayerTurn = phase === 'player_turn';
 
   if (!territory || !faction || territory.owner !== activeFactionId) {
     return (
@@ -34,27 +39,33 @@ export function TrainPanel() {
   }
 
   const handleTrain = (unitType: UnitType) => {
-    const state = useGameStore.getState();
+    if (!isPlayerTurn || !activeFactionId) return;
+
     const stats = UNIT_STATS[unitType];
     const cost = stats.cost;
 
+    const currentFaction = useGameStore.getState().factions[activeFactionId];
+    if (!currentFaction) return;
+
     if (
-      faction.resources.gold < cost.gold ||
-      faction.resources.food < cost.food ||
-      faction.resources.wood < cost.wood
+      currentFaction.resources.gold < cost.gold ||
+      currentFaction.resources.food < cost.food ||
+      currentFaction.resources.wood < cost.wood
     ) return;
 
-    // Check tech requirement
     if ('requires' in stats && stats.requires) {
-      if (!faction.techResearched.includes(stats.requires as string)) return;
+      if (!currentFaction.techResearched.includes(stats.requires as string)) return;
     }
 
-    state.updateFactionResources(activeFactionId!, {
+    if (!spendAP(AP_COST.recruit)) return;
+
+    const state = useGameStore.getState();
+    state.updateFactionResources(activeFactionId, {
       gold: -cost.gold,
       food: -cost.food,
       wood: -cost.wood,
     });
-    state.enqueueTraining(activeFactionId!, territory.id, unitType, stats.trainTicks);
+    state.enqueueTraining(activeFactionId, territory.id, unitType, stats.trainTurns);
   };
 
   const queueForTerritory = faction.trainingQueue.filter((q) => q.territoryId === territory.id);
@@ -83,7 +94,7 @@ export function TrainPanel() {
               marginBottom: 2,
             }}>
               <span>{unitTypeIcon(item.unitType)} {unitTypeName(item.unitType)}</span>
-              <span style={{ color: '#6b5840' }}>{item.ticksRemaining} ticks</span>
+              <span style={{ color: '#6b5840' }}>{item.turnsRemaining} tour{item.turnsRemaining > 1 ? 's' : ''}</span>
             </div>
           ))}
           <div className="parchment-divider" />
@@ -131,11 +142,11 @@ export function TrainPanel() {
               </div>
               <button
                 className="parchment-btn parchment-btn-primary"
-                style={{ padding: '3px 10px', fontSize: '0.7rem' }}
-                disabled={!canAfford || !hasRequirement}
+                style={{ padding: '3px 8px', fontSize: '0.65rem' }}
+                disabled={!canAfford || !hasRequirement || !isPlayerTurn || actionPoints < AP_COST.recruit}
                 onClick={() => handleTrain(type)}
               >
-                Recruter
+                Recruter ({AP_COST.recruit})
               </button>
             </div>
           );

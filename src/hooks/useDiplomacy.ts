@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useGameStore } from '@/store/useGameStore';
-import { BETRAYAL_PENALTY_TICKS } from '@/constants/gameConfig';
+import { BETRAYAL_PENALTY_TURNS } from '@/constants/gameConfig';
 import type { FactionId, Resources } from '@/types';
 
 let diplomacyIdCounter = 0;
@@ -9,7 +9,7 @@ export function useDiplomacy() {
   const store = useGameStore;
   const diplomacy = useGameStore((s) => s.diplomacy);
   const factions = useGameStore((s) => s.factions);
-  const tick = useGameStore((s) => s.tick);
+  const turnNumber = useGameStore((s) => s.turnNumber);
 
   const getRelation = useCallback((a: FactionId, b: FactionId): number => {
     const key = [a, b].sort().join('-');
@@ -24,12 +24,12 @@ export function useDiplomacy() {
 
     const hasPact = diplomacy.pacts.some(
       (p) => ((p.factionA === a && p.factionB === b) || (p.factionA === b && p.factionB === a))
-        && (p.formedAtTick + p.duration > tick)
+        && (p.formedAtTurn + p.duration > turnNumber)
     );
     if (hasPact) return 'non_aggression' as const;
 
     return 'neutral' as const;
-  }, [diplomacy.alliances, diplomacy.pacts, tick]);
+  }, [diplomacy.alliances, diplomacy.pacts, turnNumber]);
 
   const proposeAlliance = useCallback((from: FactionId, to: FactionId) => {
     const state = store.getState();
@@ -38,12 +38,12 @@ export function useDiplomacy() {
       id: `alliance-${diplomacyIdCounter}`,
       factionA: from,
       factionB: to,
-      formedAtTick: state.tick,
+      formedAtTurn: state.turnNumber,
     });
     state.addNotification({
       message: `Alliance formée entre ${factions[from]?.name} et ${factions[to]?.name}!`,
       type: 'diplomacy',
-      tick: state.tick,
+      turn: state.turnNumber,
     });
   }, [factions]);
 
@@ -57,30 +57,30 @@ export function useDiplomacy() {
     state.recordBetrayal({
       betrayer,
       victim,
-      tick: state.tick,
+      turn: state.turnNumber,
       type: 'broke_alliance',
     });
     state.addNotification({
       message: `${factions[betrayer]?.name} a trahi l'alliance avec ${factions[victim]?.name}!`,
       type: 'diplomacy',
-      tick: state.tick,
+      turn: state.turnNumber,
     });
   }, [diplomacy.alliances, factions]);
 
-  const proposePact = useCallback((from: FactionId, to: FactionId, duration: number = 120) => {
+  const proposePact = useCallback((from: FactionId, to: FactionId, duration: number = 15) => {
     const state = store.getState();
     diplomacyIdCounter += 1;
     state.addPact({
       id: `pact-${diplomacyIdCounter}`,
       factionA: from,
       factionB: to,
-      formedAtTick: state.tick,
+      formedAtTurn: state.turnNumber,
       duration,
     });
     state.addNotification({
       message: `Pacte de non-agression entre ${factions[from]?.name} et ${factions[to]?.name}!`,
       type: 'diplomacy',
-      tick: state.tick,
+      turn: state.turnNumber,
     });
   }, [factions]);
 
@@ -94,7 +94,7 @@ export function useDiplomacy() {
       offering,
       requesting,
       status: 'pending',
-      tick: state.tick,
+      turn: state.turnNumber,
     });
   }, []);
 
@@ -103,7 +103,6 @@ export function useDiplomacy() {
     const trade = diplomacy.tradeOffers.find((t) => t.id === tradeId);
     if (!trade || trade.status !== 'pending') return;
 
-    // Transfer resources
     const fromFaction = state.factions[trade.from];
     const toFaction = state.factions[trade.to];
     if (!fromFaction || !toFaction) return;
@@ -116,7 +115,6 @@ export function useDiplomacy() {
     if (trade.requesting.food) state.updateFactionResources(trade.to, { food: -(trade.requesting.food) });
     if (trade.requesting.wood) state.updateFactionResources(trade.to, { wood: -(trade.requesting.wood) });
 
-    // Give what was traded
     if (trade.offering.gold) state.updateFactionResources(trade.to, { gold: trade.offering.gold });
     if (trade.offering.food) state.updateFactionResources(trade.to, { food: trade.offering.food });
     if (trade.offering.wood) state.updateFactionResources(trade.to, { wood: trade.offering.wood });
@@ -129,7 +127,7 @@ export function useDiplomacy() {
     state.addNotification({
       message: `Échange accepté entre ${fromFaction.name} et ${toFaction.name}!`,
       type: 'diplomacy',
-      tick: state.tick,
+      turn: state.turnNumber,
     });
   }, [diplomacy.tradeOffers]);
 

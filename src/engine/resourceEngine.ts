@@ -1,4 +1,5 @@
 import { useGameStore } from '@/store/useGameStore';
+import { RESOURCE_MULTIPLIER } from '@/constants/gameConfig';
 
 export function processResources() {
   const state = useGameStore.getState();
@@ -13,33 +14,19 @@ export function processResources() {
     faction.territories.forEach((tId) => {
       const territory = state.territories[tId];
       if (!territory) return;
-      goldIncome += territory.resourceGeneration.gold;
-      foodIncome += territory.resourceGeneration.food;
-      woodIncome += territory.resourceGeneration.wood;
+      goldIncome += territory.resourceGeneration.gold * RESOURCE_MULTIPLIER;
+      foodIncome += territory.resourceGeneration.food * RESOURCE_MULTIPLIER;
+      woodIncome += territory.resourceGeneration.wood * RESOURCE_MULTIPLIER;
     });
 
-    // Check for tech bonuses
-    if (faction.techResearched.includes('agriculture')) {
-      foodIncome *= 1.25;
-    }
-    if (faction.techResearched.includes('irrigation')) {
-      foodIncome *= 1.25;
-    }
-    if (faction.techResearched.includes('mining')) {
-      goldIncome *= 1.25;
-    }
-    if (faction.techResearched.includes('deep_mining')) {
-      goldIncome *= 1.25;
-    }
-    if (faction.techResearched.includes('forestry')) {
-      woodIncome *= 1.25;
-    }
-    if (faction.techResearched.includes('sawmills')) {
-      woodIncome *= 1.25;
-    }
-    if (faction.techResearched.includes('taxation')) {
-      goldIncome *= 1.15;
-    }
+    // Tech bonuses
+    if (faction.techResearched.includes('agriculture')) foodIncome *= 1.25;
+    if (faction.techResearched.includes('irrigation')) foodIncome *= 1.25;
+    if (faction.techResearched.includes('mining')) goldIncome *= 1.25;
+    if (faction.techResearched.includes('deep_mining')) goldIncome *= 1.25;
+    if (faction.techResearched.includes('forestry')) woodIncome *= 1.25;
+    if (faction.techResearched.includes('sawmills')) woodIncome *= 1.25;
+    if (faction.techResearched.includes('taxation')) goldIncome *= 1.15;
 
     state.updateFactionResources(faction.id, {
       gold: goldIncome,

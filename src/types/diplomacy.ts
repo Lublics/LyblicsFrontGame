@@ -6,7 +6,7 @@ export interface Alliance {
   id: string;
   factionA: FactionId;
   factionB: FactionId;
-  formedAtTick: number;
+  formedAtTurn: number;
 }
 
 export interface TradeOffer {
@@ -16,21 +16,21 @@ export interface TradeOffer {
   offering: Partial<Resources>;
   requesting: Partial<Resources>;
   status: 'pending' | 'accepted' | 'rejected';
-  tick: number;
+  turn: number;
 }
 
 export interface NonAggressionPact {
   id: string;
   factionA: FactionId;
   factionB: FactionId;
-  formedAtTick: number;
-  duration: number; // ticks
+  formedAtTurn: number;
+  duration: number; // turns
 }
 
 export interface BetrayalRecord {
   betrayer: FactionId;
   victim: FactionId;
-  tick: number;
+  turn: number;
   type: 'broke_alliance' | 'broke_pact';
 }
 

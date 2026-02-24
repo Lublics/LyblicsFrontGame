@@ -18,7 +18,7 @@ export function VictoryScreen() {
   const winner = useGameStore((s) => s.winner);
   const factions = useGameStore((s) => s.factions);
   const victoryCondition = useGameStore((s) => s.victoryCondition);
-  const tick = useGameStore((s) => s.tick);
+  const turnNumber = useGameStore((s) => s.turnNumber);
   const resetGame = useGameStore((s) => s.resetGame);
 
   const winnerFaction = winner ? factions[winner] : null;
@@ -44,7 +44,6 @@ export function VictoryScreen() {
         gap: 12,
         maxWidth: 500,
       }}>
-        {/* Trophy */}
         <div style={{ fontSize: '3rem' }}>🏆</div>
 
         <h2 className="parchment-title" style={{ fontSize: '1.8rem' }}>
@@ -73,7 +72,6 @@ export function VictoryScreen() {
 
         <div style={{ width: 200, height: 1, background: 'linear-gradient(90deg, transparent, #8b7355, transparent)' }} />
 
-        {/* Stats */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
@@ -82,7 +80,7 @@ export function VictoryScreen() {
           textAlign: 'left',
         }}>
           <div>Tours joués:</div>
-          <div style={{ fontWeight: 600 }}>{Math.floor(tick / 2)}</div>
+          <div style={{ fontWeight: 600 }}>{turnNumber}</div>
           <div>Territoires:</div>
           <div style={{ fontWeight: 600 }}>{winnerFaction.territories.length}</div>
           <div>Or accumulé:</div>

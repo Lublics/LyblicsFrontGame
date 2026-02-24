@@ -1,36 +1,43 @@
 import { useGameStore } from '@/store/useGameStore';
 import { processResources } from './resourceEngine';
-import { processMovement } from './movement';
 import { processResearch } from './researchEngine';
-import { processAI } from '@/ai/aiController';
+import { processAITurns } from '@/ai/aiController';
 import { checkVictoryConditions } from './victoryEngine';
 
-export function processTick() {
+export function endPlayerTurn() {
   const state = useGameStore.getState();
-  if (state.phase !== 'playing') return;
+  if (state.phase !== 'player_turn') return;
+  state.setPhase('ai_turn');
+}
 
-  // 1. Increment tick
-  state.incrementTick();
-
-  // 2. Resource generation
+export function processEndOfRound() {
+  // 1. Generate resources for all factions
   processResources();
 
-  // 3. Training queues
-  state.tickTrainingQueues();
+  // 2. Advance training queues (1 step per round)
+  useGameStore.getState().advanceTrainingQueues();
 
-  // 4. Movement / pending attacks
-  processMovement();
-
-  // 5. Research progression
+  // 3. Advance research (1 step per round)
   processResearch();
 
-  // 6. AI evaluation
-  processAI();
+  // 4. Decay diplomatic penalties
+  useGameStore.setState((s) => {
+    Object.values(s.factions).forEach((faction) => {
+      if (faction.diplomaticPenalty > 0) {
+        faction.diplomaticPenalty -= 1;
+      }
+    });
+  });
 
-  // 7. Victory check
+  // 5. Check victory conditions
   checkVictoryConditions();
 
-  // 8. Clean old notifications (keep last 50 ticks)
-  const currentTick = useGameStore.getState().tick;
-  state.clearOldNotifications(currentTick - 50);
+  // 6. If game is still going, advance turn and start new player turn
+  const state = useGameStore.getState();
+  if (state.phase !== 'victory') {
+    const turnNumber = state.turnNumber;
+    state.clearOldNotifications(turnNumber - 10);
+    state.incrementTurn();
+    state.startPlayerTurn();
+  }
 }

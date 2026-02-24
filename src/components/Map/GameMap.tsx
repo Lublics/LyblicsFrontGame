@@ -1,9 +1,8 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useGameStore } from '@/store/useGameStore';
 import { MAP_WIDTH, MAP_HEIGHT } from '@/constants/gameConfig';
 import { TerritoryShape } from './Territory';
 import { TerritoryLabel } from './TerritoryLabel';
-import { AttackArrow } from './AttackArrow';
 import { MapBorder } from './MapBorder';
 
 export function GameMap() {
@@ -11,7 +10,6 @@ export function GameMap() {
   const factions = useGameStore((s) => s.factions);
   const selectedId = useGameStore((s) => s.selectedTerritoryId);
   const activeFactionId = useGameStore((s) => s.activeFactionId);
-  const pendingAttacks = useGameStore((s) => s.pendingAttacks);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, w: MAP_WIDTH, h: MAP_HEIGHT });
@@ -29,7 +27,6 @@ export function GameMap() {
       const newW = Math.max(300, Math.min(MAP_WIDTH * 1.5, prev.w * zoomFactor));
       const newH = Math.max(200, Math.min(MAP_HEIGHT * 1.5, prev.h * zoomFactor));
 
-      // Zoom towards mouse position
       const svg = svgRef.current;
       if (!svg) return { ...prev, w: newW, h: newH };
 
@@ -45,7 +42,7 @@ export function GameMap() {
   }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 1 || e.button === 2) { // middle or right click
+    if (e.button === 1 || e.button === 2) {
       e.preventDefault();
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
@@ -93,19 +90,7 @@ export function GameMap() {
           cursor: isPanning ? 'grabbing' : 'default',
         }}
       >
-        {/* SVG Defs */}
         <defs>
-          <marker
-            id="arrowhead"
-            markerWidth="10"
-            markerHeight="7"
-            refX="9"
-            refY="3.5"
-            orient="auto"
-          >
-            <polygon points="0 0, 10 3.5, 0 7" fill="#c00" opacity="0.8" />
-          </marker>
-          {/* Parchment texture filter */}
           <filter id="parchment-noise">
             <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
             <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise" />
@@ -113,7 +98,6 @@ export function GameMap() {
           </filter>
         </defs>
 
-        {/* Background texture hint */}
         <rect
           x={-50}
           y={-50}
@@ -123,10 +107,8 @@ export function GameMap() {
           opacity={0.3}
         />
 
-        {/* Map border */}
         <MapBorder />
 
-        {/* Territory shapes */}
         {territoryList.map((t) => (
           <TerritoryShape
             key={t.id}
@@ -137,12 +119,6 @@ export function GameMap() {
           />
         ))}
 
-        {/* Attack arrows */}
-        {pendingAttacks.map((attack) => (
-          <AttackArrow key={attack.id} attack={attack} />
-        ))}
-
-        {/* Labels on top */}
         {territoryList.map((t) => (
           <TerritoryLabel key={`label-${t.id}`} territory={t} />
         ))}

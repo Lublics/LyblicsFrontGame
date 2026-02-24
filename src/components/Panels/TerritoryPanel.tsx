@@ -1,19 +1,20 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useGameStore } from '@/store/useGameStore';
 import { useSelectedTerritory } from '@/hooks/useSelectedTerritory';
 import { terrainName, regionName, unitTypeName, getTotalUnits, formatNumber } from '@/utils/formatters';
-import { UNIT_STATS, MOVEMENT_TICKS } from '@/constants/gameConfig';
+import { AP_COST } from '@/constants/gameConfig';
+import { spendAP } from '@/engine/actionPoints';
+import { resolveInstantAttack } from '@/engine/movement';
 import type { UnitType, Army, TerritoryId } from '@/types';
 import '@/styles/parchment.css';
-
-let playerAttackCounter = 0;
 
 export function TerritoryPanel() {
   const { territory, setSelected } = useSelectedTerritory();
   const factions = useGameStore((s) => s.factions);
   const activeFactionId = useGameStore((s) => s.activeFactionId);
   const territories = useGameStore((s) => s.territories);
-  const [transferTarget, setTransferTarget] = useState<TerritoryId | null>(null);
+  const actionPoints = useGameStore((s) => s.actionPoints);
+  const phase = useGameStore((s) => s.phase);
   const [sendRatio, setSendRatio] = useState(0.5);
 
   if (!territory) {
@@ -35,68 +36,57 @@ export function TerritoryPanel() {
   const owner = territory.owner ? factions[territory.owner] : null;
   const isOwned = territory.owner === activeFactionId;
   const adjacentTerritories = territory.adjacentIds.map((id) => territories[id]).filter(Boolean);
+  const isPlayerTurn = phase === 'player_turn';
 
   const handleAttack = (targetId: TerritoryId) => {
+    if (!isPlayerTurn || !activeFactionId) return;
+    if (!spendAP(AP_COST.attack)) return;
+
+    const result = resolveInstantAttack(activeFactionId, territory.id, targetId, sendRatio);
+
     const state = useGameStore.getState();
-    const target = territories[targetId];
-    if (!target || !activeFactionId) return;
-
-    const army: Army = {
-      militia: Math.floor(territory.army.militia * sendRatio),
-      archer: Math.floor(territory.army.archer * sendRatio),
-      knight: Math.floor(territory.army.knight * sendRatio),
-      siege: Math.floor(territory.army.siege * sendRatio),
-    };
-
-    if (getTotalUnits(army) < 1) return;
-
-    // Remove from source
-    state.setTerritoryArmy(territory.id, {
-      militia: territory.army.militia - army.militia,
-      archer: territory.army.archer - army.archer,
-      knight: territory.army.knight - army.knight,
-      siege: territory.army.siege - army.siege,
+    state.addNotification({
+      message: result.message,
+      type: 'combat',
+      turn: state.turnNumber,
+      factionId: activeFactionId,
     });
-
-    playerAttackCounter += 1;
-    state.addPendingAttack({
-      id: `attack-player-${playerAttackCounter}`,
-      attackerFactionId: activeFactionId,
-      fromTerritoryId: territory.id,
-      toTerritoryId: targetId,
-      army,
-      ticksRemaining: MOVEMENT_TICKS,
-    });
-
-    setTransferTarget(null);
   };
 
   const handleTransferTroops = (targetId: TerritoryId) => {
-    const state = useGameStore.getState();
+    if (!isPlayerTurn || !activeFactionId) return;
+
     const target = territories[targetId];
     if (!target || target.owner !== activeFactionId) return;
 
+    if (!spendAP(AP_COST.transfer)) return;
+
+    const state = useGameStore.getState();
+    const freshTerritory = state.territories[territory.id];
+    if (!freshTerritory) return;
+
     const army: Army = {
-      militia: Math.floor(territory.army.militia * sendRatio),
-      archer: Math.floor(territory.army.archer * sendRatio),
-      knight: Math.floor(territory.army.knight * sendRatio),
-      siege: Math.floor(territory.army.siege * sendRatio),
+      militia: Math.floor(freshTerritory.army.militia * sendRatio),
+      archer: Math.floor(freshTerritory.army.archer * sendRatio),
+      knight: Math.floor(freshTerritory.army.knight * sendRatio),
+      siege: Math.floor(freshTerritory.army.siege * sendRatio),
     };
 
-    // Remove from source
     state.setTerritoryArmy(territory.id, {
-      militia: territory.army.militia - army.militia,
-      archer: territory.army.archer - army.archer,
-      knight: territory.army.knight - army.knight,
-      siege: territory.army.siege - army.siege,
+      militia: freshTerritory.army.militia - army.militia,
+      archer: freshTerritory.army.archer - army.archer,
+      knight: freshTerritory.army.knight - army.knight,
+      siege: freshTerritory.army.siege - army.siege,
     });
 
-    // Add to target
+    const freshTarget = state.territories[targetId];
+    if (!freshTarget) return;
+
     state.setTerritoryArmy(targetId, {
-      militia: target.army.militia + army.militia,
-      archer: target.army.archer + army.archer,
-      knight: target.army.knight + army.knight,
-      siege: target.army.siege + army.siege,
+      militia: freshTarget.army.militia + army.militia,
+      archer: freshTarget.army.archer + army.archer,
+      knight: freshTarget.army.knight + army.knight,
+      siege: freshTarget.army.siege + army.siege,
     });
   };
 
@@ -131,7 +121,7 @@ export function TerritoryPanel() {
 
       {/* Resources */}
       <div style={{ fontSize: '0.8rem', marginBottom: 8 }}>
-        <strong>Revenus/tick:</strong>
+        <strong>Revenus/tour:</strong>
         <div style={{ display: 'flex', gap: 10, marginTop: 2 }}>
           <span>🪙 {territory.resourceGeneration.gold}</span>
           <span>🌾 {territory.resourceGeneration.food}</span>
@@ -212,16 +202,18 @@ export function TerritoryPanel() {
                         className="parchment-btn"
                         style={{ padding: '1px 6px', fontSize: '0.6rem' }}
                         onClick={() => handleTransferTroops(adj.id)}
+                        disabled={!isPlayerTurn || actionPoints < AP_COST.transfer}
                       >
-                        Envoyer
+                        Envoyer ({AP_COST.transfer})
                       </button>
                     ) : (
                       <button
                         className="parchment-btn parchment-btn-danger"
                         style={{ padding: '1px 6px', fontSize: '0.6rem' }}
                         onClick={() => handleAttack(adj.id)}
+                        disabled={!isPlayerTurn || actionPoints < AP_COST.attack}
                       >
-                        Attaquer
+                        Attaquer ({AP_COST.attack})
                       </button>
                     )}
                   </div>
