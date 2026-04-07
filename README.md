@@ -1,4 +1,4 @@
-# Lyblics — Conquête de Territoire
+# Lyblics — Conquête de Territoire - https://front.lyblics.com/
 
 Jeu de stratégie au tour par tour en navigateur. Commandez vos armées, gérez vos ressources, recherchez des technologies et conquérez la carte face à des factions adverses pilotées par l'IA.
 
